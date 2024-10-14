@@ -1,0 +1,10 @@
+C:\Users\wataru\source\repos\DB_Upgrade0.1\bin\Debug\DB_Upgrade0.1.exe.config
+C:\Users\wataru\source\repos\DB_Upgrade0.1\bin\Debug\DB_Upgrade0.1.exe
+C:\Users\wataru\source\repos\DB_Upgrade0.1\bin\Debug\DB_Upgrade0.1.pdb
+C:\Users\wataru\source\repos\DB_Upgrade0.1\obj\Debug\DB_Upgrade0.1.csproj.AssemblyReference.cache
+C:\Users\wataru\source\repos\DB_Upgrade0.1\obj\Debug\DB_Upgrade0._1.Properties.Resources.resources
+C:\Users\wataru\source\repos\DB_Upgrade0.1\obj\Debug\DB_Upgrade0.1.csproj.GenerateResource.cache
+C:\Users\wataru\source\repos\DB_Upgrade0.1\obj\Debug\DB_Upgrade0.1.csproj.CoreCompileInputs.cache
+C:\Users\wataru\source\repos\DB_Upgrade0.1\obj\Debug\DB_Upgrade0.1.exe
+C:\Users\wataru\source\repos\DB_Upgrade0.1\obj\Debug\DB_Upgrade0.1.pdb
+C:\Users\wataru\source\repos\DB_Upgrade0.1\obj\Debug\DB_Upgrade0._1.DBUpgrade.resources
