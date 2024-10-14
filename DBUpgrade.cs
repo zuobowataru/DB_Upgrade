@@ -91,9 +91,17 @@ namespace DB_Upgrade0._1
 
             jikko = DB_Connect.Check_Version(ref version);
 
-            ShowMessage("button1_Click", version,"現DBバージョン");
+            this.textBox1.Text = version;
+            //ShowMessage("button1_Click", version,"現DBバージョン");
 
-            DB_Connect.update_tablel1();
+            DB_Connect.update_tablel1(ref messages);
+            // 実行ログ出力
+            foreach (string mess in messages)
+            {
+                ShowMessage("Update", mess, "発行SQL内容");
+            }
+            this.textBox2.Text = "5";
+
         }
 
         private void richTextBox1_TextChanged(object sender, EventArgs e)

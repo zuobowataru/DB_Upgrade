@@ -5,6 +5,7 @@ using System.Configuration;
 using System.Data;
 using System.Data.Common;
 using System.Data.OleDb;
+using System.Runtime.Remoting.Messaging;
 using System.Windows.Forms;
 
 namespace DB_Upgrade0._1
@@ -99,10 +100,11 @@ public class DB_Connect
         }
 
         // table　更新
-        public void update_tablel1()
+        public void update_tablel1(ref List<string> messages)
         {
             // 文字列を格納するリストを作成
-            List<string> message = new List<string>();
+            List<string> SqlResults1 = new List<string>();
+            List<string> SqlResults2 = new List<string>();
 
 
             //
@@ -115,8 +117,8 @@ public class DB_Connect
             // Selectで接続する宣言
             dataAdapter2.SelectCommand = command2;
 
-            string sql = ConfigurationManager.AppSettings["SQL_Select_UpCmd"];
-            command2.CommandText = sql;
+            string sql1 = ConfigurationManager.AppSettings["SQL_Select_UpCmd"];
+            command2.CommandText = sql1;
             command2.Connection = connection2;
 
             dataAdapter2.SelectCommand = command2;
@@ -124,8 +126,15 @@ public class DB_Connect
             dataAdapter2.Fill(dataTable2);
 
             // SQLの実行結果を文字列で取得
-            String SQLResult = DataTableToString(dataTable2);
+            SqlResults1 = DataTablesToString(dataTable2);
+            messages = SqlResults1;
 
+            /*
+            dataTable2.Clear();
+            string sql2 = ConfigurationManager.AppSettings["SQL_Select_RepFlg"];
+            command2.CommandText = sql2;
+            SqlResults2 = DataTablesToString(dataTable2);
+            */
 
             //
             //      ②SQLを発行してDB1を更新をする。
@@ -137,9 +146,12 @@ public class DB_Connect
             command1.Transaction = connection1.BeginTransaction();
 
             try {
-                command1.CommandText = SQLResult;
-                command1.ExecuteNonQuery();
-                // コミット
+                foreach (var sqls1 in SqlResults1)
+                {
+                    command1.CommandText = sqls1;
+                    command1.ExecuteNonQuery();
+                }
+                    // コミット
                 command1.Transaction.Commit();            }                       
             catch {
 
@@ -148,10 +160,6 @@ public class DB_Connect
                 command1.Transaction.Rollback();
 
             }
-
-
-
-
 
 
         }
@@ -258,6 +266,26 @@ public class DB_Connect
 
             return result;
         }
+        // DataTable型をString型に変換する関数
+        // DataTableの各行と各列をカンマ区切りの形式で連結し、最終的に1つの文字列にまとめる。
+        // SQLの取得結果が1行の場合のみ使う
+        public List<string> DataTablesToString(DataTable table)
+        {
+            // 文字列を格納するリストを作成
+            List<string> SqlResults = new List<string>();
+
+            // 各行を取得
+            foreach (DataRow row in table.Rows)
+            {
+                foreach (var item in row.ItemArray)
+                {
+                    SqlResults.Add(item.ToString());
+                }
+            }
+
+            return SqlResults;
+        }
+
 
     }
 
