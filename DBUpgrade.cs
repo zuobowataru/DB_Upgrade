@@ -29,7 +29,12 @@ namespace DB_Upgrade0._1
 
         private void Table_Click(object sender, EventArgs e)
         {
+            DB_Connect.get_tablelist();
+        }
 
+        private void button1_Click(object sender, EventArgs e)
+        {
+            DB_Connect.update_tablel1();
         }
     }
 
