@@ -28,8 +28,13 @@ public class DB_Connect
         private OleDbConnection connection2 = new OleDbConnection();    // データベース２（更新先）接続用オブジェクト
 
         private OleDbDataAdapter dataAdapter1 = new OleDbDataAdapter(); // テーブル操作実行用オブジェクト
+        private OleDbDataAdapter dataAdapter2 = new OleDbDataAdapter(); // テーブル操作実行用オブジェクト
+
         private OleDbCommand command1 = new OleDbCommand();             // クエリ格納用オブジェクト
-        private DataTable dataTable1 = new DataTable();                 // 
+        private OleDbCommand command2 = new OleDbCommand();             // クエリ格納用オブジェクト
+        private DataTable dataTable1 = new DataTable();                 // データ処理テーブル
+        private DataTable dataTable2 = new DataTable();                 // データ処理テーブル
+
 
         // 外部変数
         private String DBConnectionString1;
@@ -101,26 +106,68 @@ public class DB_Connect
 
 
             //
-            //      本処理
-            //      バージョンアップ
-            //      SQLを発行して
+            //      ①更新用SQLをDB2から取得する
+            //
+            // 直前の取得結果をクリア
+            dataTable2.Clear();
+
+            // ①SQLを発行して、特定テーブルから値取得する
+            // Selectで接続する宣言
+            dataAdapter2.SelectCommand = command2;
+
+            string sql = ConfigurationManager.AppSettings["SQL_Select_UpCmd"];
+            command2.CommandText = sql;
+            command2.Connection = connection2;
+
+            dataAdapter2.SelectCommand = command2;
+            // SQL実行
+            dataAdapter2.Fill(dataTable2);
+
+            // SQLの実行結果を文字列で取得
+            String SQLResult = DataTableToString(dataTable2);
+
+
+            //
+            //      ②SQLを発行してDB1を更新をする。
+            //
+            // 直前の取得結果をクリア
+            dataTable1.Clear();
+
+            // トランザクション開始
+            command1.Transaction = connection1.BeginTransaction();
+
+            try {
+                command1.CommandText = SQLResult;
+                command1.ExecuteNonQuery();
+                // コミット
+                command1.Transaction.Commit();            }                       
+            catch {
+
+
+                MessageBox.Show("例外発生。SQL実行でエラーが発生しました。");
+                command1.Transaction.Rollback();
+
+            }
+
+
+
 
 
 
         }
 
-        //更新対象バージョンかチェックし、NGの場合は処理を抜ける
+        //更新対象バージョンかチェックする。
+        //更新対象外の場合は、Falseを返して処理を抜ける
         public Boolean Check_Version(ref String write_version ){
 
 
             // 直前の取得結果をクリア
             dataTable1.Clear();
-
+            
             // ①SQLを発行して、特定テーブルから値取得する
             // Selectで接続する宣言
             dataAdapter1.SelectCommand = command1;
-            //
-
+            
             string sql = ConfigurationManager.AppSettings["SQL_Select_Version"];
             command1.CommandText = sql;
             command1.Connection = connection1;
