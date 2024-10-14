@@ -88,7 +88,7 @@ public class DB_Connect
             command1.Connection = connection1;
 
             dataAdapter1.SelectCommand = command1;
-            // 実行
+            // SQL実行
             dataAdapter1.Fill(dataTable1);
 
             // 取得結果表示

@@ -18,6 +18,7 @@ namespace DB_Upgrade0._1
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new DBUpgrade());
+
         }
     }
 }
