@@ -39,6 +39,19 @@
             textBox1 = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
+            // textBox1
+            // 
+            textBox1.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
+            textBox1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            textBox1.ForeColor = System.Drawing.SystemColors.Window;
+            textBox1.Location = new System.Drawing.Point(0, 194);
+            textBox1.Multiline = true;
+            textBox1.Name = "textBox1";
+            textBox1.Size = new System.Drawing.Size(796, 50);
+            textBox1.TabIndex = 5;
+            textBox1.TabStop = false;
+            textBox1.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
+            // 
             // label1
             // 
             this.label1.AutoSize = true;
@@ -89,15 +102,6 @@
             this.button2.Text = "Clear";
             this.button2.UseVisualStyleBackColor = true;
             this.button2.Click += new System.EventHandler(this.button2_Click);
-            // 
-            // textBox1
-            // 
-            textBox1.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            textBox1.Location = new System.Drawing.Point(0, 194);
-            textBox1.Multiline = true;
-            textBox1.Name = "textBox1";
-            textBox1.Size = new System.Drawing.Size(796, 50);
-            textBox1.TabIndex = 5;
             // 
             // label2
             // 
