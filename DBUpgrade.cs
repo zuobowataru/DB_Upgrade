@@ -66,41 +66,51 @@ namespace DB_Upgrade0._1
             MessageForm();
            
         }
-        // 更新内容確認
-        // 現在は更新DBのテーブル一覧を取得するプログラム
+        //
+        // DBアップデートが必要なのかチェックする。
+        //
         private void Table_Click(object sender, EventArgs e)
         {
+            Boolean jikko;
+            String before_version = null;
+            String after_version = null;
 
-            List<string> tablelist = new List<string>();
+            jikko = DB_Connect.Check_Version(ref before_version);
 
-            tablelist = DB_Connect.get_tablelist();
+            this.textBox1.Text = before_version;
 
-            // 実行ログ出力
-            foreach (string table in tablelist) { 
-            ShowMessage("Table_Click", table,"テーブルリスト");
+            //　更新プログラムバージョンを取得
+            jikko = DB_Connect.Check_Version(ref before_version);
+            after_version = DB_Connect.get_aft_version();
+            this.textBox2.Text = after_version;
+
+            // 現バージョンが更新バージョンDB以前の場合
+            if (jikko == false)
+            {
+                ShowMessage("Check_Version", before_version, "DB更新対象外です");
+
             }
-        }
+            ShowMessage("Check_Version", "", "更新前後のバージョンが想定内なら、【アップデート】ボタンを押してください");
+
+        }      
 
         // DB更新プログラム
         // テーブル更新
         private void button1_Click(object sender, EventArgs e)
         {
-            Boolean jikko;
-            String version = null;
+            
+            
+            String after_version = null;
             List<string> messages = new List<string>();
 
-            jikko = DB_Connect.Check_Version(ref version);
-
-            this.textBox1.Text = version;
-            //ShowMessage("button1_Click", version,"現DBバージョン");
-
-            DB_Connect.update_tablel1(ref messages);
+          
+            after_version = DB_Connect.version_up(ref messages);
             // 実行ログ出力
             foreach (string mess in messages)
             {
                 ShowMessage("Update", mess, "発行SQL内容");
             }
-            this.textBox2.Text = "5";
+
 
         }
 

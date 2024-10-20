@@ -1,6 +1,7 @@
 ﻿
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Configuration;
 using System.Data;
 using System.Data.Common;
@@ -9,13 +10,13 @@ using System.Runtime.Remoting.Messaging;
 using System.Windows.Forms;
 
 namespace DB_Upgrade0._1
-{ 
-//
-//  DB接続関連の基本クラス
-//
-
-public class DB_Connect
 {
+    //
+    //  DB接続関連の基本クラス
+    //
+
+    public class DB_Connect
+    {
         // DB接続関連
         //  App.configのappSettingsタグ内に記述した「DBConnString」のキーの値を取得して変数「connStrTemplate」に格納する
         string connStr1 = ConfigurationManager.AppSettings["DB1ConnString"];
@@ -41,12 +42,12 @@ public class DB_Connect
         private String DBConnectionString1;
         private String DBConnectionString2;
 
-        DataTable schemaTable1;
+     //   DataTable schemaTable1;
         DataTable schemaTable2;
 
         // コンストラクタ
         public DB_Connect()
-	    {
+        {
             // データベース1の接続設定
             string connectionString1 = string.Format(connStr1, dbPathStr1);
             this.DBConnectionString1 = connectionString1;
@@ -67,138 +68,127 @@ public class DB_Connect
 
 
         }
-        // table 一覧取得
-        public List<string> get_tablelist()
-        {
-
+        public string get_aft_version() {
             // 文字列を格納するリストを作成
-            List<string> tableNames = new List<string>();
+            List<string> SqlResults = new List<string>();
+            string sql, after_version;
+            int vs_count;
 
+            // ③バージョン取得L取得
+            sql = ConfigurationManager.AppSettings["SQL_Select_VSN"];
+            vs_count = select_table_Rlt(connection2, sql, ref SqlResults);
 
-            // テーブル一覧を取得するためにSchema情報を取得します。
-            this.schemaTable2 = connection2.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, null);
-            foreach (DataRow row in schemaTable2.Rows)
-            {
-                // String型
-                String tableName = row["TABLE_NAME"].ToString();
+            // 更新完了したときのバージョンを取得
+            after_version = SqlResults[vs_count - 1];
 
-                // システムテーブルは除外する
-
-                string firstFourChars = tableName.Substring(0, 4);
-                if (firstFourChars == "MSys")
-                {
-                    // 除外対象
-                }
-                else
-                {
-                    //　対象
-                    tableNames.Add(tableName);
-                }
-                    //Console.WriteLine(tableName);
-            }
-            return tableNames;
+            return after_version;
         }
 
         // table　更新
-        public void update_tablel1(ref List<string> messages)
+        public string version_up(ref List<string> messages)
         {
             // 文字列を格納するリストを作成
             List<string> SqlResults1 = new List<string>();
             List<string> SqlResults2 = new List<string>();
-
-
+            List<string> SqlResults3 = new List<string>();
+    
+            string after_version = null;
+            string sql;
             //
             //      ①更新用SQLをDB2から取得する
             //
             // 直前の取得結果をクリア
-            dataTable2.Clear();
+
 
             // ①SQLを発行して、特定テーブルから値取得する
-            // Selectで接続する宣言
-            dataAdapter2.SelectCommand = command2;
-
-            string sql1 = ConfigurationManager.AppSettings["SQL_Select_UpCmd"];
-            command2.CommandText = sql1;
-            command2.Connection = connection2;
-
-            dataAdapter2.SelectCommand = command2;
-            // SQL実行
-            dataAdapter2.Fill(dataTable2);
-
-            // SQLの実行結果を文字列で取得
-            SqlResults1 = DataTablesToString(dataTable2);
+            //①アップデートSQL取得
+            sql = ConfigurationManager.AppSettings["SQL_Select_UpCmd"];
+            select_table_Rlt(connection2, sql, ref SqlResults1);
             messages = SqlResults1;
 
-            /*
-            dataTable2.Clear();
-            string sql2 = ConfigurationManager.AppSettings["SQL_Select_RepFlg"];
-            command2.CommandText = sql2;
-            SqlResults2 = DataTablesToString(dataTable2);
-            */
+            // ②リピートフラグL取得
+            sql = ConfigurationManager.AppSettings["SQL_Select_RepFlg"];
+            select_table_Rlt(connection2, sql, ref SqlResults2);
 
+            
             //
             //      ②SQLを発行してDB1を更新をする。
             //
-            // 直前の取得結果をクリア
-            dataTable1.Clear();
 
-            // トランザクション開始
-            command1.Transaction = connection1.BeginTransaction();
+            try
+            {
+                int i = 0;
+                int j = 0;
+                // SKipするSQLカラム
+                List<int> skipnum = new List<int>();
+                // リピート不可SSQLの位置を取得
+                foreach (var flgs in SqlResults2)
+                {
+                    
+                    i++;
+                    if (string.Equals(flgs,"False"))
+                    {
+                        // リピート不可SQLに対して処置を考える
+                        skipnum.Add(i);
+                    }
 
-            try {
+                }
+                i = 0;
+                // アップデートSQLを実行
                 foreach (var sqls1 in SqlResults1)
                 {
-                    command1.CommandText = sqls1;
-                    command1.ExecuteNonQuery();
-                }
-                    // コミット
-                command1.Transaction.Commit();            }                       
-            catch {
+                    i++;
 
+                    //2度実行失敗SQLは、発行を回避する。
+                    if (i == skipnum[j]) {
+                        j++;
+                    }
+                    else
+                    update_table_Rlt(connection1, sqls1);
+       
+                }
+            }
+            catch
+            {
 
                 MessageBox.Show("例外発生。SQL実行でエラーが発生しました。");
-                command1.Transaction.Rollback();
 
             }
 
+            return after_version;
 
         }
 
         //更新対象バージョンかチェックする。
         //更新対象外の場合は、Falseを返して処理を抜ける
-        public Boolean Check_Version(ref String write_version ){
+        public Boolean Check_Version(ref String write_version) {
 
+            List<string> SqlResults1 = new List<string>();
 
-            // 直前の取得結果をクリア
-            dataTable1.Clear();
-            
             // ①SQLを発行して、特定テーブルから値取得する
-            // Selectで接続する宣言
-            dataAdapter1.SelectCommand = command1;
-            
+
             string sql = ConfigurationManager.AppSettings["SQL_Select_Version"];
             command1.CommandText = sql;
-            command1.Connection = connection1;
+            select_table_Rlt(connection1, sql, ref SqlResults1);
 
-            dataAdapter1.SelectCommand = command1;
-            // SQL実行
-            dataAdapter1.Fill(dataTable1);
+            write_version = SqlResults1[0];
 
-            // SQLの実行結果を文字列で取得
-            String SQLResult = DataTableToString(dataTable1);
-            write_version = SQLResult;
+            string[] fixVersions = write_version.Split('.');
+            foreach (string fixVersion in fixVersions)
+            {
+                Console.WriteLine(fixVersion);  // 出力: apple banana cherry
+            }
 
             // ②バージョン☑
             // 特定バージョン以上の値かどうか☑する。
 
-            int OKVersion;
-            String fixVersion = ConfigurationManager.AppSettings["ChkVersion"];
+
+            int[] numbers = new int[] { 2, 0 };
 
             // チェック用バージョン
-            OKVersion = int.Parse(SQLResult);
 
-
-            if (int.Parse(fixVersion) >= OKVersion)
+            // チェック
+            if (int.Parse(fixVersions[0]) >= numbers[0])
             {
                 // OK
 
@@ -212,7 +202,6 @@ public class DB_Connect
             return true;
 
         }
-
 
         // Close_DB
         public void Close_DB()
@@ -248,12 +237,12 @@ public class DB_Connect
             string result = "";
 
             // 列名を取得
-             foreach (DataColumn column in table.Columns)
-             {
-                 result += column.ColumnName + ",";
-             }
-             result = result.TrimEnd(',') + Environment.NewLine; // 最後のカンマを削除
-            
+            foreach (DataColumn column in table.Columns)
+            {
+                result += column.ColumnName + ",";
+            }
+            result = result.TrimEnd(',') + Environment.NewLine; // 最後のカンマを削除
+
             // 各行を取得
             foreach (DataRow row in table.Rows)
             {
@@ -285,10 +274,61 @@ public class DB_Connect
 
             return SqlResults;
         }
+        // select 取得
+        // 接続先、SQLを指定して、その結果をString型で返す。
+        // 取得したデータのカラム数を返す
+        //
+        public int select_table_Rlt(OleDbConnection connection, string sql, ref List<string> SQLlist) {
+
+            DataTable dataTable = new DataTable();
+            OleDbCommand command = new OleDbCommand();             // クエリ格納用オブジェクト
+
+            command.Connection = connection;
+
+            command.CommandText = sql;
+            dataAdapter2.SelectCommand = command;
+            // SQL実行
+            dataAdapter2.Fill(dataTable);
+
+            SQLlist = DataTablesToString(dataTable);
+
+            // 取得カラム数を返却
+            return dataTable.Rows.Count;
+        }
+        // update
+        // 接続先、SQLを指定して、その結果をString型で返す。
+        // 実行した行数を返す
+        //
+        public int update_table_Rlt(OleDbConnection connection, string sql)
+        {
 
 
+            DataTable dataTable = new DataTable();
+            OleDbCommand command = new OleDbCommand();             // クエリ格納用オブジェクト
+            int affectedRows = 0;
+            // トランザクション開始
+            command.Transaction = connection.BeginTransaction();
+
+
+            command.Connection = connection;
+
+            command.CommandText = sql;
+            try
+            {
+                affectedRows = command.ExecuteNonQuery();
+                // コミット
+                command.Transaction.Commit();
+                               
+            }
+           
+            catch(Exception ex){ 
+            //
+            }
+        
+            // 取得カラム数を返却
+            return affectedRows;
+        }
+                
+          
     }
-
-
-
 }
