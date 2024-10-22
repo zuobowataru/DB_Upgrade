@@ -6,6 +6,7 @@ using System.Configuration;
 using System.Data;
 using System.Data.Common;
 using System.Data.OleDb;
+using System.Linq.Expressions;
 using System.Runtime.Remoting.Messaging;
 using System.Windows.Forms;
 
@@ -19,55 +20,63 @@ namespace DB_Upgrade0._1
     {
         // DB接続関連
         //  App.configのappSettingsタグ内に記述した「DBConnString」のキーの値を取得して変数「connStrTemplate」に格納する
-        string connStr1 = ConfigurationManager.AppSettings["DB1ConnString"];
+        string connStr = ConfigurationManager.AppSettings["DBConnString"];
         string dbPathStr1 = ConfigurationManager.AppSettings["DB1Path"];
-
-        string connStr2 = ConfigurationManager.AppSettings["DB2ConnString"];
         string dbPathStr2 = ConfigurationManager.AppSettings["DB2Path"];
 
 
-        private OleDbConnection connection1 = new OleDbConnection();    // データベース１（更新元）接続用オブジェクト
-        private OleDbConnection connection2 = new OleDbConnection();    // データベース２（更新先）接続用オブジェクト
-
-        private OleDbDataAdapter dataAdapter1 = new OleDbDataAdapter(); // テーブル操作実行用オブジェクト
-        private OleDbDataAdapter dataAdapter2 = new OleDbDataAdapter(); // テーブル操作実行用オブジェクト
-
-        private OleDbCommand command1 = new OleDbCommand();             // クエリ格納用オブジェクト
-        private OleDbCommand command2 = new OleDbCommand();             // クエリ格納用オブジェクト
-        private DataTable dataTable1 = new DataTable();                 // データ処理テーブル
-        private DataTable dataTable2 = new DataTable();                 // データ処理テーブル
-
+        public OleDbConnection connection1 = new OleDbConnection();    // データベース１（更新元）接続用オブジェクト
+        public OleDbConnection connection2 = new OleDbConnection();    // データベース２（更新先）接続用オブジェクト
 
         // 外部変数
-        private String DBConnectionString1;
-        private String DBConnectionString2;
+        public String DBConnectionString1 { get; set; }
+        public String DBConnectionString2 { get; set; }
 
-     //   DataTable schemaTable1;
-        DataTable schemaTable2;
 
         // コンストラクタ
         public DB_Connect()
         {
             // データベース1の接続設定
-            string connectionString1 = string.Format(connStr1, dbPathStr1);
-            this.DBConnectionString1 = connectionString1;
-
+           // this.DBConnectionString1 = string.Format(connStr, dbPathStr1);
+            
             // データベース2の接続設定
-            string connectionString2 = string.Format(connStr2, dbPathStr2);
-            this.DBConnectionString2 = connectionString2;
+           // this.DBConnectionString2 = string.Format(connStr, dbPathStr2);
 
         }
         // Open_DB
-        public void Open_DB()
+        public Boolean Open_DB1(String dbPath)
         {
-            connection1.ConnectionString = DBConnectionString1;
-            connection1.Open();
+            try{
+                // データベース1の接続設定
+                this.DBConnectionString1 = string.Format(connStr, dbPath);
+                connection1.ConnectionString = DBConnectionString1;
+                connection1.Open();
+            }
+            catch { 
+            
+                return false;
+            }
 
-            connection2.ConnectionString = DBConnectionString2;
-            connection2.Open();
-
-
+            return true;
         }
+        public Boolean Open_DB2(String dbPath)
+        {
+            try
+            {
+                // データベース1の接続設定
+                this.DBConnectionString1 = string.Format(connStr, dbPath);
+                connection2.ConnectionString = DBConnectionString1;
+                connection2.Open();
+            }
+            catch
+            {
+
+                return false;
+            }
+
+            return true;
+        }
+
         public string get_aft_version() {
             // 文字列を格納するリストを作成
             List<string> SqlResults = new List<string>();
@@ -168,7 +177,6 @@ namespace DB_Upgrade0._1
             // ①SQLを発行して、特定テーブルから値取得する
 
             string sql = ConfigurationManager.AppSettings["SQL_Select_Version"];
-            command1.CommandText = sql;
             select_table_Rlt(connection1, sql, ref SqlResults1);
 
             write_version = SqlResults1[0];
@@ -208,6 +216,25 @@ namespace DB_Upgrade0._1
         {
             connection1.Close();
         }
+        // デザインのボタンと紐づく
+        // ボタン押下後、更新用SQLを全部出力する
+        public void all_hyoji(ref List<string> messages) {
+            List<string> SqlResults1 = new List<string>();
+                        
+            string sql = ConfigurationManager.AppSettings["SQL_Select_UpCmd"];
+            select_table_Rlt(connection2, sql, ref SqlResults1);
+            messages = SqlResults1;
+        }
+        // デザインのボタンと紐づく
+        public void all_hyosji(ref List<string> messages)
+        {
+            List<string> SqlResults1 = new List<string>();
+
+            string sql = ConfigurationManager.AppSettings["SQL_Select_UpCmd"];
+            select_table_Rlt(connection2, sql, ref SqlResults1);
+            messages = SqlResults1;
+        }
+
 
         // DataTable型をString型に変換する関数
         // DataTableの各行と各列をカンマ区切りの形式で連結し、最終的に1つの文字列にまとめる。
@@ -282,13 +309,13 @@ namespace DB_Upgrade0._1
 
             DataTable dataTable = new DataTable();
             OleDbCommand command = new OleDbCommand();             // クエリ格納用オブジェクト
+            OleDbDataAdapter dataAdapter = new OleDbDataAdapter(); // テーブル操作実行用オブジェクト
 
             command.Connection = connection;
-
             command.CommandText = sql;
-            dataAdapter2.SelectCommand = command;
+            dataAdapter.SelectCommand = command;
             // SQL実行
-            dataAdapter2.Fill(dataTable);
+            dataAdapter.Fill(dataTable);
 
             SQLlist = DataTablesToString(dataTable);
 
@@ -302,13 +329,11 @@ namespace DB_Upgrade0._1
         public int update_table_Rlt(OleDbConnection connection, string sql)
         {
 
-
             DataTable dataTable = new DataTable();
             OleDbCommand command = new OleDbCommand();             // クエリ格納用オブジェクト
             int affectedRows = 0;
             // トランザクション開始
             command.Transaction = connection.BeginTransaction();
-
 
             command.Connection = connection;
 
@@ -327,8 +352,7 @@ namespace DB_Upgrade0._1
         
             // 取得カラム数を返却
             return affectedRows;
-        }
-                
+        }            
           
     }
 }

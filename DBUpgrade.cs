@@ -11,6 +11,7 @@ using System.Configuration;
 using System.Data.OleDb;
 using System.IO;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using System.Runtime.Remoting.Messaging;
 
 namespace DB_Upgrade0._1
 {
@@ -22,7 +23,7 @@ namespace DB_Upgrade0._1
         //DB接続関連のヘッダ
         private String LogHead = "(ログレベル)(時間) （関数名）　（処理結果）";
 
-
+        
         // メッセージ表示域の初期化
         //(ログレベル) (時間)　（処理対象）　（処理結果）　（メッセージ）
         //
@@ -57,11 +58,10 @@ namespace DB_Upgrade0._1
         // コンストラクタ
         public DBUpgrade()
         {
-            InitializeComponent();
-
             // DB接続
-            DB_Connect.Open_DB();
+            //DB_Connect.Open_DB();
 
+            InitializeComponent();
             // メッセージ表示
             MessageForm();
            
@@ -134,6 +134,95 @@ namespace DB_Upgrade0._1
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
 
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            int i=0;
+            List<string> messages = new List<string>();
+            DB_Connect.all_hyoji(ref messages);
+
+            ShowMessage("No", "Update SQL", "コメント");
+            // 実行ログ出力
+            foreach (string mess in messages)
+            {
+                i++;
+                ShowMessage(Convert.ToString(i), mess, "UpdateSQL");
+            }
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void DB1Path_TextChanged(object sender, EventArgs e)
+        {
+            // DB Path1
+         //   DB1Path.Text = DB_Connect.DBConnectionString1;
+        }
+
+        private void DB2Path_TextChanged(object sender, EventArgs e)
+        {
+            // DB Path2
+         //   DB2Path.Text = DB_Connect.DBConnectionString2;
+
+        }
+
+        private void openFileDialog1_FileOk(object sender, CancelEventArgs e)
+        {
+
+        }
+
+        private void DB1_Click(object sender, EventArgs e)
+        {
+            DesigneProcess DesigneProcess = new DesigneProcess();
+            String FPath;
+            Boolean DB_Connect_flg;
+
+            DB1_label.AutoSize = true;
+            FPath = DesigneProcess.OpenDBFileDialog();
+            DB1Path.Text = FPath;
+
+            DB_Connect_flg = DB_Connect.Open_DB1(FPath);
+
+            // デザイナ変更
+            if (FPath == "" | DB_Connect_flg == false)
+            {
+                DB1_label.Text = "未接続";
+                DB1_label.BackColor = Color.Red;
+            }
+            else
+            {
+                DB1_label.Text = "接続";
+                DB1_label.BackColor = Color.Green;
+            }
+
+        }
+
+        private void DB2_Click(object sender, EventArgs e)
+        {
+            DesigneProcess DesigneProcess = new DesigneProcess();
+            String FPath;
+            Boolean DB_Connect_flg;
+
+            DB2_label.AutoSize = true;
+            FPath = DesigneProcess.OpenDBFileDialog();
+            DB2Path.Text = FPath;
+
+            DB_Connect_flg = DB_Connect.Open_DB2(FPath);
+
+            // デザイナ変更
+            if (FPath == "" | DB_Connect_flg == false)
+            {
+                DB2_label.Text = "未接続";                
+                DB2_label.BackColor = Color.Red;
+            }
+            else
+            {
+                DB2_label.Text = "接続";
+                DB2_label.BackColor = Color.Green;
+            }
         }
     }
 
