@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace DB_Upgrade0._1
 {
@@ -31,9 +32,18 @@ namespace DB_Upgrade0._1
             return filePath;
         }
 
+        // ファイル名が特定値かチェックする
+        // 引数　ファイルの絶対パス
+        public Boolean ChkFName(String FPath)
+        {
+            String kotei = "UpdateSQL.mdb";
 
+            // 特定の部分文字列を含んでいるかを確認
+            bool containsSubstring = FPath.Contains(kotei);
 
-
+            
+            return containsSubstring;
+        }
     }
 
 

@@ -12,6 +12,7 @@ using System.Data.OleDb;
 using System.IO;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using System.Runtime.Remoting.Messaging;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace DB_Upgrade0._1
 {
@@ -23,26 +24,41 @@ namespace DB_Upgrade0._1
         //DB接続関連のヘッダ
         private String LogHead = "(ログレベル)(時間) （関数名）　（処理結果）";
 
-        
+
         // メッセージ表示域の初期化
         //(ログレベル) (時間)　（処理対象）　（処理結果）　（メッセージ）
         //
         private void MessageForm()
         {
             // フォームの設定
-           richTextBox1.Text = "実行結果のメッセージ表示" + Environment.NewLine;
-           richTextBox1.ScrollBars = RichTextBoxScrollBars.Vertical;
+            richTextBox1.Text = "実行結果のメッセージ表示" + Environment.NewLine;
+            richTextBox1.ScrollBars = RichTextBoxScrollBars.Vertical;
 
 
         }
-        // メッセージをリッチテキストに表示するメソッド
-        private void ShowMessage(string fnc_name,string message, string bikou)
+        //  関数　メッセージをリッチテキストに表示するメソッド
+        //  引数1（1,INFO,2,Error）引数2 引数3 引数4
+        //
+        private void ShowMessage(Boolean error,string fnc_name, string message, string bikou)
         {
             // 現在の日時を取得
             DateTime now = DateTime.Now;
             String LogMsg = null;
 
+            richTextBox1.SelectionStart = richTextBox1.TextLength;
+            richTextBox1.SelectionLength = 0;
+
+            if (error == true)
+            { richTextBox1.SelectionColor = Color.Red; }
+            else
+                richTextBox1.SelectionColor = Color.Black;
+
+
+            if (error == true)
+            LogMsg += "(Error)";    //ログレベル
+            else
             LogMsg += "(Info)";    //ログレベル
+
             LogMsg += "\t";    //タブ
             LogMsg += now;       //処理時間
             LogMsg += "\t";    //タブ
@@ -52,7 +68,10 @@ namespace DB_Upgrade0._1
             LogMsg += "\t";    //タブ
             LogMsg += bikou;    //その他メッセージ
             LogMsg += Environment.NewLine;  // 改行
-            richTextBox1.Text += LogMsg;
+
+            richTextBox1.AppendText(LogMsg);
+            richTextBox1.SelectionColor = richTextBox1.ForeColor; 
+
         }
 
         // コンストラクタ
@@ -64,7 +83,7 @@ namespace DB_Upgrade0._1
             InitializeComponent();
             // メッセージ表示
             MessageForm();
-           
+
         }
         //
         // DBアップデートが必要なのかチェックする。
@@ -74,6 +93,13 @@ namespace DB_Upgrade0._1
             Boolean jikko;
             String before_version = null;
             String after_version = null;
+
+            Boolean error_flg = Check_DB_connect();
+            if (error_flg == false)
+            {
+                ShowMessage(true, "Update", "DB接続エラー", "DB接続を確認してください");
+                return;
+            }
 
             jikko = DB_Connect.Check_Version(ref before_version);
 
@@ -85,30 +111,36 @@ namespace DB_Upgrade0._1
             this.textBox2.Text = after_version;
 
             // 現バージョンが更新バージョンDB以前の場合
-            if (jikko == false)
+  /*          if (jikko == false)
             {
-                ShowMessage("Check_Version", before_version, "DB更新対象外です");
+                ShowMessage(true,"Check_Version", before_version, "DB更新対象外です");
 
             }
-            ShowMessage("Check_Version", "", "更新前後のバージョンが想定内なら、【アップデート】ボタンを押してください");
-
-        }      
+            ShowMessage(false,"Check_Version", "", "更新前後のバージョンが想定内なら、【アップデート】ボタンを押してください");
+  */
+        }
 
         // DB更新プログラム
         // テーブル更新
         private void button1_Click(object sender, EventArgs e)
         {
-            
-            
+
+
             String after_version = null;
             List<string> messages = new List<string>();
+            List<Boolean> error = new List<Boolean>();
 
-          
-            after_version = DB_Connect.version_up(ref messages);
-            // 実行ログ出力
-            foreach (string mess in messages)
+            Boolean error_flg = Check_DB_connect();
+            if (error_flg == false)
             {
-                ShowMessage("Update", mess, "発行SQL内容");
+                ShowMessage(true,"Update", "DB接続エラー", "DB接続を確認してください");
+                return;
+            }
+            after_version = DB_Connect.version_up(ref error,ref messages);
+            // 実行ログ出力
+            for (int i=0;i<messages.Count;i++)
+            {
+                ShowMessage(error[i], "Update", messages[i], "発行SQL内容");
             }
 
 
@@ -116,14 +148,14 @@ namespace DB_Upgrade0._1
 
         private void richTextBox1_TextChanged(object sender, EventArgs e)
         {
-           
+
 
         }
-
+        // クリア処理　メッセージ領域をクリアする
         private void button2_Click(object sender, EventArgs e)
         {
             richTextBox1.Clear();  // 以前のメッセージをクリア
-            richTextBox1.Text = LogHead +Environment.NewLine; //ログヘッダ
+            //richTextBox1.Text = LogHead + Environment.NewLine; //ログヘッダ
         }
 
         private void label2_Click(object sender, EventArgs e)
@@ -135,19 +167,27 @@ namespace DB_Upgrade0._1
         {
 
         }
-
+        //  DB更新SQL
         private void button3_Click(object sender, EventArgs e)
         {
-            int i=0;
+            int i = 0;
             List<string> messages = new List<string>();
+            Boolean error_flg = Check_DB_connect();
+            if (error_flg == false)
+            {
+                ShowMessage(true, "Update", "DB接続エラー", "DB接続を確認してください");
+                return;
+            }
+
+
             DB_Connect.all_hyoji(ref messages);
 
-            ShowMessage("No", "Update SQL", "コメント");
+            ShowMessage(false,"No", "Update SQL", "コメント");
             // 実行ログ出力
             foreach (string mess in messages)
             {
                 i++;
-                ShowMessage(Convert.ToString(i), mess, "UpdateSQL");
+                ShowMessage(false,Convert.ToString(i), mess, "UpdateSQL");
             }
         }
 
@@ -159,13 +199,13 @@ namespace DB_Upgrade0._1
         private void DB1Path_TextChanged(object sender, EventArgs e)
         {
             // DB Path1
-         //   DB1Path.Text = DB_Connect.DBConnectionString1;
+            //   DB1Path.Text = DB_Connect.DBConnectionString1;
         }
 
         private void DB2Path_TextChanged(object sender, EventArgs e)
         {
             // DB Path2
-         //   DB2Path.Text = DB_Connect.DBConnectionString2;
+            //   DB2Path.Text = DB_Connect.DBConnectionString2;
 
         }
 
@@ -205,6 +245,7 @@ namespace DB_Upgrade0._1
             DesigneProcess DesigneProcess = new DesigneProcess();
             String FPath;
             Boolean DB_Connect_flg;
+            Boolean Fname_flg;
 
             DB2_label.AutoSize = true;
             FPath = DesigneProcess.OpenDBFileDialog();
@@ -212,10 +253,12 @@ namespace DB_Upgrade0._1
 
             DB_Connect_flg = DB_Connect.Open_DB2(FPath);
 
+            Fname_flg = DesigneProcess.ChkFName(FPath);
+
             // デザイナ変更
-            if (FPath == "" | DB_Connect_flg == false)
+            if (FPath == "" | DB_Connect_flg == false | Fname_flg == false)
             {
-                DB2_label.Text = "未接続";                
+                DB2_label.Text = "未接続";
                 DB2_label.BackColor = Color.Red;
             }
             else
@@ -224,6 +267,36 @@ namespace DB_Upgrade0._1
                 DB2_label.BackColor = Color.Green;
             }
         }
-    }
+        // DB接続有無を確認、１つでも未接続の場合エラーを返す
+         private Boolean Check_DB_connect()
+        {
+            Boolean return_flg;
+            if (DB1_label.Text.Equals("未接続"))
+                return_flg = false;
+            else if (DB2_label.Text.Equals("未接続")) 
+            {
+                return_flg = false;
 
+            }
+            else
+            {
+                return_flg = true;
+            }
+
+            return return_flg;
+        }
+
+        private void DBClearButton_Click(object sender, EventArgs e)
+        {
+
+            DB_Connect.Close_DB();
+
+            DB1_label.Text = "未接続";
+            DB1_label.BackColor = Color.Red;
+            DB1Path.Text = "";
+            DB2_label.Text = "未接続";
+            DB2_label.BackColor = Color.Red;
+            DB2Path.Text = "";
+        }
+    }
 }

@@ -36,14 +36,13 @@ namespace DB_Upgrade0._1
         // コンストラクタ
         public DB_Connect()
         {
-            // データベース1の接続設定
-           // this.DBConnectionString1 = string.Format(connStr, dbPathStr1);
-            
-            // データベース2の接続設定
-           // this.DBConnectionString2 = string.Format(connStr, dbPathStr2);
 
         }
-        // Open_DB
+        //　関数名　　Open_DB1
+        //　概要      DB1への接続を確立する 
+        //  引数      接続先のDBパス
+        //　返却値    boolean型  true  false
+        //
         public Boolean Open_DB1(String dbPath)
         {
             try{
@@ -59,6 +58,11 @@ namespace DB_Upgrade0._1
 
             return true;
         }
+        //　関数名　　Open_DB2
+        //　概要      DB2への接続を確立する 
+        //  引数      接続先のDBパス
+        //　返却値    boolean型  true  false
+        //
         public Boolean Open_DB2(String dbPath)
         {
             try
@@ -92,15 +96,18 @@ namespace DB_Upgrade0._1
 
             return after_version;
         }
-
-        // table　更新
-        public string version_up(ref List<string> messages)
+        //　関数名　　version_up
+        //　概要      DB更新処理（メイン） 
+        //  引数      string型　メッセージ
+        //　返却値    string型  バージョンアップ後
+        //
+        public string version_up(ref List<Boolean> error_flg, ref List<string> messages)
         {
             // 文字列を格納するリストを作成
             List<string> SqlResults1 = new List<string>();
             List<string> SqlResults2 = new List<string>();
             List<string> SqlResults3 = new List<string>();
-    
+
             string after_version = null;
             string sql;
             //
@@ -113,13 +120,13 @@ namespace DB_Upgrade0._1
             //①アップデートSQL取得
             sql = ConfigurationManager.AppSettings["SQL_Select_UpCmd"];
             select_table_Rlt(connection2, sql, ref SqlResults1);
-            messages = SqlResults1;
+           // messages = SqlResults1;
 
             // ②リピートフラグL取得
             sql = ConfigurationManager.AppSettings["SQL_Select_RepFlg"];
             select_table_Rlt(connection2, sql, ref SqlResults2);
 
-            
+
             //
             //      ②SQLを発行してDB1を更新をする。
             //
@@ -129,47 +136,66 @@ namespace DB_Upgrade0._1
                 int i = 0;
                 int j = 0;
                 // SKipするSQLカラム
-                List<int> skipnum = new List<int>();
-                // リピート不可SSQLの位置を取得
-                foreach (var flgs in SqlResults2)
-                {
-                    
-                    i++;
-                    if (string.Equals(flgs,"False"))
-                    {
-                        // リピート不可SQLに対して処置を考える
-                        skipnum.Add(i);
-                    }
+                /*       List<int> skipnum = new List<int>();
+                       // リピート不可SSQLの位置を取得
+                       foreach (var flgs in SqlResults2)
+                       {
 
-                }
+                           i++;
+                           if (string.Equals(flgs,"False"))
+                           {
+                               // リピート不可SQLに対して処置を考える
+                               skipnum.Add(i);
+                           }
+
+                       }
+                */
                 i = 0;
                 // アップデートSQLを実行
-                foreach (var sqls1 in SqlResults1)
+                for (i = 0; i < SqlResults1.Count; i++)
                 {
-                    i++;
 
-                    //2度実行失敗SQLは、発行を回避する。
-                    if (i == skipnum[j]) {
-                        j++;
+
+                    try
+                    {
+                        // SQLの実行
+                        messages.Add( SqlResults1[i]);
+                        update_table_Rlt(connection1, SqlResults1[i]);
+                        error_flg.Add(false);
                     }
-                    else
-                    update_table_Rlt(connection1, sqls1);
-       
+                    catch
+                    {
+
+                        // ２度実行エラーSQLの場合
+                        if (string.Equals(SqlResults2[i], "True"))
+                            error_flg.Add(true); 
+                        else
+                        {
+                            MessageBox.Show("例外発生。SQL実行でエラーが発生しました。");
+
+                        }
+                    }
                 }
             }
             catch
             {
 
-                MessageBox.Show("例外発生。SQL実行でエラーが発生しました。");
+                MessageBox.Show("例外発生。エラーが発生しました。");
 
             }
-
+            finally {
+            // 引数を返す
+            
+            }
             return after_version;
-
+           
         }
 
-        //更新対象バージョンかチェックする。
-        //更新対象外の場合は、Falseを返して処理を抜ける
+        //　関数名　　Check_Version
+        //　概要      現在の更新バージョンを取得する 
+        //  引数      string型　バージョン
+        //　返却値    boolean型  
+        //
         public Boolean Check_Version(ref String write_version) {
 
             List<string> SqlResults1 = new List<string>();
@@ -187,27 +213,7 @@ namespace DB_Upgrade0._1
                 Console.WriteLine(fixVersion);  // 出力: apple banana cherry
             }
 
-            // ②バージョン☑
-            // 特定バージョン以上の値かどうか☑する。
-
-
-            int[] numbers = new int[] { 2, 0 };
-
-            // チェック用バージョン
-
-            // チェック
-            if (int.Parse(fixVersions[0]) >= numbers[0])
-            {
-                // OK
-
-            }
-            else
-            {
-                // NG
-                return false;
-            }
-
-            return true;
+             return true;
 
         }
 
@@ -215,6 +221,7 @@ namespace DB_Upgrade0._1
         public void Close_DB()
         {
             connection1.Close();
+            connection2.Close();
         }
         // デザインのボタンと紐づく
         // ボタン押下後、更新用SQLを全部出力する
@@ -225,63 +232,7 @@ namespace DB_Upgrade0._1
             select_table_Rlt(connection2, sql, ref SqlResults1);
             messages = SqlResults1;
         }
-        // デザインのボタンと紐づく
-        public void all_hyosji(ref List<string> messages)
-        {
-            List<string> SqlResults1 = new List<string>();
 
-            string sql = ConfigurationManager.AppSettings["SQL_Select_UpCmd"];
-            select_table_Rlt(connection2, sql, ref SqlResults1);
-            messages = SqlResults1;
-        }
-
-
-        // DataTable型をString型に変換する関数
-        // DataTableの各行と各列をカンマ区切りの形式で連結し、最終的に1つの文字列にまとめる。
-        // SQLの取得結果が1行の場合のみ使う
-        static string DataTableToString(DataTable table)
-        {
-            string result = "";
-
-            // 各行を取得
-            foreach (DataRow row in table.Rows)
-            {
-                foreach (var item in row.ItemArray)
-                {
-                    result += item.ToString();
-                }
-            }
-
-            return result;
-        }
-        // DataTable型をString型に変換する関数
-        // DataTableの各行と各列をカンマ区切りの形式で連結し、最終的に1つの文字列にまとめる。
-        // 以下は出力イメージ
-        // version_row
-        // 2.0.0
-        static string DataTableToString2(DataTable table)
-        {
-            string result = "";
-
-            // 列名を取得
-            foreach (DataColumn column in table.Columns)
-            {
-                result += column.ColumnName + ",";
-            }
-            result = result.TrimEnd(',') + Environment.NewLine; // 最後のカンマを削除
-
-            // 各行を取得
-            foreach (DataRow row in table.Rows)
-            {
-                foreach (var item in row.ItemArray)
-                {
-                    result += item.ToString() + ",";
-                }
-                result = result.TrimEnd(',') + Environment.NewLine; // 最後のカンマを削除
-            }
-
-            return result;
-        }
         // DataTable型をString型に変換する関数
         // DataTableの各行と各列をカンマ区切りの形式で連結し、最終的に1つの文字列にまとめる。
         // SQLの取得結果が1行の場合のみ使う
@@ -338,21 +289,14 @@ namespace DB_Upgrade0._1
             command.Connection = connection;
 
             command.CommandText = sql;
-            try
-            {
-                affectedRows = command.ExecuteNonQuery();
-                // コミット
-                command.Transaction.Commit();
-                               
-            }
-           
-            catch(Exception ex){ 
-            //
-            }
-        
+
+            affectedRows = command.ExecuteNonQuery();
+            // コミット
+            command.Transaction.Commit();                              
+                             
             // 取得カラム数を返却
             return affectedRows;
-        }            
-          
+
+        }
     }
 }
