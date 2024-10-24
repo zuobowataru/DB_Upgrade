@@ -6,6 +6,7 @@ using System.Configuration;
 using System.Data;
 using System.Data.Common;
 using System.Data.OleDb;
+using System.IO;
 using System.Linq.Expressions;
 using System.Runtime.Remoting.Messaging;
 using System.Windows.Forms;
@@ -87,7 +88,7 @@ namespace DB_Upgrade0._1
             string sql, after_version;
             int vs_count;
 
-            // ③バージョン取得L取得
+            // DBUpdate後のバージョン取得
             sql = ConfigurationManager.AppSettings["SQL_Select_VSN"];
             vs_count = select_table_Rlt(connection2, sql, ref SqlResults);
 
@@ -96,98 +97,104 @@ namespace DB_Upgrade0._1
 
             return after_version;
         }
-        //　関数名　　version_up
+        //　関数名　　update_ddl
         //　概要      DB更新処理（メイン） 
-        //  引数      string型　メッセージ
+        //  引数      boolean型　エラー有無　string型　メッセージ
         //　返却値    string型  バージョンアップ後
         //
-        public string version_up(ref List<Boolean> error_flg, ref List<string> messages)
+        public Boolean update_ddl(ref List<Boolean> error_flg, ref List<string> messages)
         {
             // 文字列を格納するリストを作成
             List<string> SqlResults1 = new List<string>();
             List<string> SqlResults2 = new List<string>();
             List<string> SqlResults3 = new List<string>();
 
-            string after_version = null;
-            string sql;
+            string sql, after_version;
+            int vs_count;
+            Boolean kekka_flg,func_kekka = true;
             //
             //      ①更新用SQLをDB2から取得する
             //
-            // 直前の取得結果をクリア
-
 
             // ①SQLを発行して、特定テーブルから値取得する
-            //①アップデートSQL取得
             sql = ConfigurationManager.AppSettings["SQL_Select_UpCmd"];
             select_table_Rlt(connection2, sql, ref SqlResults1);
-           // messages = SqlResults1;
 
             // ②リピートフラグL取得
             sql = ConfigurationManager.AppSettings["SQL_Select_RepFlg"];
             select_table_Rlt(connection2, sql, ref SqlResults2);
-
+          
+            // ③DBUpdate後のバージョン取得
+            sql = ConfigurationManager.AppSettings["SQL_Select_VSN"];
+            vs_count = select_table_Rlt(connection2, sql, ref SqlResults3);
+            // 更新完了したときのバージョンを取得
+            after_version = SqlResults3[vs_count - 1];
 
             //
-            //      ②SQLを発行してDB1を更新をする。
+            //  SQLを発行してDB1を更新をする。
             //
 
             try
             {
                 int i = 0;
-                int j = 0;
-                // SKipするSQLカラム
-                /*       List<int> skipnum = new List<int>();
-                       // リピート不可SSQLの位置を取得
-                       foreach (var flgs in SqlResults2)
-                       {
-
-                           i++;
-                           if (string.Equals(flgs,"False"))
-                           {
-                               // リピート不可SQLに対して処置を考える
-                               skipnum.Add(i);
-                           }
-
-                       }
-                */
-                i = 0;
                 // アップデートSQLを実行
                 for (i = 0; i < SqlResults1.Count; i++)
                 {
-
-
-                    try
-                    {
-                        // SQLの実行
-                        messages.Add( SqlResults1[i]);
-                        update_table_Rlt(connection1, SqlResults1[i]);
+                    // SQLの実行
+                    messages.Add( SqlResults1[i]);
+                    kekka_flg = update_table_Rlt(connection1, SqlResults1[i]);
+                       
+                    // SQLの実行結果をメッセージに反映
+                    if (kekka_flg == true)
                         error_flg.Add(false);
-                    }
-                    catch
-                    {
+                    else 
+                        error_flg.Add(true);
 
-                        // ２度実行エラーSQLの場合
-                        if (string.Equals(SqlResults2[i], "True"))
-                            error_flg.Add(true); 
-                        else
-                        {
-                            MessageBox.Show("例外発生。SQL実行でエラーが発生しました。");
-
-                        }
-                    }
                 }
+                // 後処理
+                //　最新バージョン書き込み
+                //　バージョン更新する。
+                string[] vup_sqls = new string[3];
+                // 現在の日付と時刻を取得
+                DateTime currentDate = DateTime.Now;
+
+                sql = ConfigurationManager.AppSettings["SQL_Update_Version"];
+                vup_sqls[0] = string.Format(sql, after_version);
+
+                sql = ConfigurationManager.AppSettings["SQL_Update_Name"];
+                vup_sqls[1] = string.Format(sql, "DB_System");
+
+                sql = ConfigurationManager.AppSettings["SQL_Update_Date"];
+                vup_sqls[2] = string.Format(sql, currentDate.ToString("yyyy/MM/dd"));
+
+
+                // Version UP SQLを実行していく
+                foreach (string vup_sql in vup_sqls)
+                {
+                    // SQLの実行
+                    messages.Add(vup_sql);
+                    kekka_flg = update_table_Rlt(connection1, vup_sql);
+
+                    // SQLの実行結果をメッセージに反映
+                    if (kekka_flg == true)
+                        error_flg.Add(false);
+                    else
+                        error_flg.Add(true);
+
+                }
+
             }
             catch
             {
 
-                MessageBox.Show("例外発生。エラーが発生しました。");
-
+                MessageBox.Show("例外発生。想定外エラーが発生しました。");
+                func_kekka = false;
             }
-            finally {
+            finally
+            {
             // 引数を返す
-            
             }
-            return after_version;
+            return func_kekka;
            
         }
 
@@ -273,16 +280,17 @@ namespace DB_Upgrade0._1
             // 取得カラム数を返却
             return dataTable.Rows.Count;
         }
-        // update
+        // update用のSQL
+        // 返却値：Boolen
         // 接続先、SQLを指定して、その結果をString型で返す。
         // 実行した行数を返す
         //
-        public int update_table_Rlt(OleDbConnection connection, string sql)
+        public Boolean update_table_Rlt(OleDbConnection connection, string sql)
         {
 
             DataTable dataTable = new DataTable();
             OleDbCommand command = new OleDbCommand();             // クエリ格納用オブジェクト
-            int affectedRows = 0;
+            Boolean kekka_flg;
             // トランザクション開始
             command.Transaction = connection.BeginTransaction();
 
@@ -290,12 +298,21 @@ namespace DB_Upgrade0._1
 
             command.CommandText = sql;
 
-            affectedRows = command.ExecuteNonQuery();
-            // コミット
-            command.Transaction.Commit();                              
-                             
+            try
+            {
+                command.ExecuteNonQuery();
+                // コミット
+                command.Transaction.Commit();
+
+                kekka_flg = true;
+            }
+            catch { 
+                command.Transaction.Rollback();
+
+                kekka_flg = false;
+            }
             // 取得カラム数を返却
-            return affectedRows;
+            return kekka_flg;
 
         }
     }

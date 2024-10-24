@@ -22,7 +22,7 @@ namespace DB_Upgrade0._1
         private DB_Connect DB_Connect = new DB_Connect();
 
         //DB接続関連のヘッダ
-        private String LogHead = "(ログレベル)(時間) （関数名）　（処理結果）";
+     //   private String LogHead = "(ログレベル)(時間) （関数名）　（処理結果）";
 
 
         // メッセージ表示域の初期化
@@ -110,23 +110,13 @@ namespace DB_Upgrade0._1
             after_version = DB_Connect.get_aft_version();
             this.textBox2.Text = after_version;
 
-            // 現バージョンが更新バージョンDB以前の場合
-  /*          if (jikko == false)
-            {
-                ShowMessage(true,"Check_Version", before_version, "DB更新対象外です");
-
-            }
-            ShowMessage(false,"Check_Version", "", "更新前後のバージョンが想定内なら、【アップデート】ボタンを押してください");
-  */
         }
 
-        // DB更新プログラム
+        // DB更新プログラム【メイン処理】
         // テーブル更新
         private void button1_Click(object sender, EventArgs e)
         {
 
-
-            String after_version = null;
             List<string> messages = new List<string>();
             List<Boolean> error = new List<Boolean>();
 
@@ -136,13 +126,16 @@ namespace DB_Upgrade0._1
                 ShowMessage(true,"Update", "DB接続エラー", "DB接続を確認してください");
                 return;
             }
-            after_version = DB_Connect.version_up(ref error,ref messages);
+
+            ShowMessage(false, "MSG", "更新開始", "アップデートが開始しました。");
+
+            DB_Connect.update_ddl(ref error,ref messages);
             // 実行ログ出力
             for (int i=0;i<messages.Count;i++)
             {
                 ShowMessage(error[i], "Update", messages[i], "発行SQL内容");
             }
-
+            ShowMessage(false, "MSG", "更新完了", "アップデートが完了しました。");
 
         }
 
@@ -155,7 +148,6 @@ namespace DB_Upgrade0._1
         private void button2_Click(object sender, EventArgs e)
         {
             richTextBox1.Clear();  // 以前のメッセージをクリア
-            //richTextBox1.Text = LogHead + Environment.NewLine; //ログヘッダ
         }
 
         private void label2_Click(object sender, EventArgs e)
@@ -198,14 +190,11 @@ namespace DB_Upgrade0._1
 
         private void DB1Path_TextChanged(object sender, EventArgs e)
         {
-            // DB Path1
-            //   DB1Path.Text = DB_Connect.DBConnectionString1;
+
         }
 
         private void DB2Path_TextChanged(object sender, EventArgs e)
         {
-            // DB Path2
-            //   DB2Path.Text = DB_Connect.DBConnectionString2;
 
         }
 
@@ -285,7 +274,7 @@ namespace DB_Upgrade0._1
 
             return return_flg;
         }
-
+        // DB接続クリア
         private void DBClearButton_Click(object sender, EventArgs e)
         {
 
@@ -297,6 +286,11 @@ namespace DB_Upgrade0._1
             DB2_label.Text = "未接続";
             DB2_label.BackColor = Color.Red;
             DB2Path.Text = "";
+
+            // version表記をクリア
+            this.textBox1.Text = "";
+            this.textBox2.Text = "";
+
         }
     }
 }
