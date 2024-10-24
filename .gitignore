@@ -1,6 +1,6 @@
 # obj配下 フォルダは、GIT登録しない
-obj/*
+/obj/
 # bin配下 フォルダは、GIT登録しない
-bin/*
+/bin/
 # .vs配下 フォルダは、GIT登録しない
-.vs/*
+.vs/
